@@ -1,27 +1,33 @@
-// news-image-19-nov: copy entry.png to the make.fun output directory.
-// Node 22, standard library only, no network.
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+// 19 November 2026 — The World in One Day
+// Entry for the make.fun bounty "news-image-20261119".
+// This program copies the entry image (entry.png, sitting next to this
+// file) into the output directory chosen by the environment variable
+// MAKEFUN_OUTPUT_DIR, falling back to /output when the variable is unset.
 
-const source = join(import.meta.dirname, "entry.png");
-const outDir = process.env.MAKEFUN_OUTPUT_DIR || join(import.meta.dirname, "out");
-const target = join(outDir, "entry.png");
+import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const source = join(here, "entry.png");
+const outDir = process.env.MAKEFUN_OUTPUT_DIR?.trim() || "/output";
 
 if (!existsSync(source)) {
-  console.error(`entry.png not found next to main.ts: ${source}`);
+  console.error(`Missing source image: ${source}`);
   process.exit(1);
 }
 
-try {
-  mkdirSync(outDir, { recursive: true });
-  copyFileSync(source, target);
-} catch (error) {
-  console.error(`Failed to copy entry.png to ${target}: ${error.message}`);
-  process.exit(1);
-}
+mkdirSync(outDir, { recursive: true });
+const destination = join(outDir, "entry.png");
+copyFileSync(source, destination);
 
-if (!existsSync(target)) {
-  console.error(`Copy reported success but ${target} is missing.`);
+// Verify the copy landed intact before reporting success.
+const sourceBytes = statSync(source).size;
+const copiedBytes = statSync(destination).size;
+if (sourceBytes !== copiedBytes) {
+  console.error(
+    `Copy mismatch: source is ${sourceBytes} bytes, destination is ${copiedBytes} bytes.`,
+  );
   process.exit(1);
 }
-console.log(`Copied entry.png to ${target}`);
+console.log(`Copied entry.png (${copiedBytes} bytes) to ${destination}`);
